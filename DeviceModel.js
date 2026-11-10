@@ -12,6 +12,19 @@ function bluetoothDevice(devices, output) {
   }
   return null
 }
+function usbOutput(output) {
+  var name = String(output || "")
+  return name.indexOf("alsa_output.usb-") === 0 && isBarracuda(name)
+      && /barracuda_x_2\.4(?:_|-)/i.test(name)
+}
+function usbState(value) {
+  if (!value || value.adapter !== "present") return ({})
+  var out = {driver: value.driver === true, link: "unknown", battery: -1}
+  if (out.driver && ["connected", "disconnected"].indexOf(value.link) >= 0) out.link = value.link
+  if (out.driver && out.link === "connected" && value.battery && Number.isInteger(value.battery.percent)
+      && value.battery.percent >= 0 && value.battery.percent <= 100) out.battery = value.battery.percent
+  return out
+}
 function validState(state) {
   if (!state || typeof state !== "object") return ({})
   var out = {}

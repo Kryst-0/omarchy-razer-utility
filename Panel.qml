@@ -20,10 +20,11 @@ Panel {
   readonly property var devices: Bluetooth.devices ? Bluetooth.devices.values : []
   readonly property string sinkName: sink ? String(sink.name || "") : ""
   readonly property var bt: Model.bluetoothDevice(devices, sinkName)
-  readonly property bool selected: !!bt
-  readonly property string transport: "bluetooth"
+  readonly property bool usbSelected: Model.usbOutput(sinkName)
+  readonly property bool selected: !!bt || usbSelected
+  readonly property string transport: usbSelected ? "usb" : "bluetooth"
   readonly property string address: bt ? String(bt.address) : ""
-  readonly property string endpoint: address
+  readonly property string endpoint: transport + ":" + (usbSelected ? sinkName : address)
   PwObjectTracker { objects: root.sink ? [root.sink] : [] }
   readonly property bool ready: selected && !!sink && !!sink.audio
   readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
@@ -33,8 +34,14 @@ Panel {
   property string errorKey: ""
   property string resultKey: ""
   property var draftBands: [0,0,0,0,0,0,0,0,0,0]
-  readonly property bool linkConfirmed: !!bt
-  readonly property int battery: bt && bt.batteryAvailable ? Math.round(bt.battery * 100) : -1
+  property var usb: ({})
+  readonly property bool linkConfirmed: usbSelected ? usb.link === "connected" : !!bt
+  readonly property int battery: usbSelected ? (usb.battery === undefined ? -1 : usb.battery) : bt && bt.batteryAvailable ? Math.round(bt.battery * 100) : -1
+  onLinkConfirmedChanged: {
+    if (!usbSelected) return
+    if (!linkConfirmed) { state = ({}); bandsDebounce.stop() }
+    else if (opened) readSettings()
+  }
   readonly property color iconColor: !linkConfirmed ? dim : battery >= 0 && battery <= 20 ? (bar ? bar.urgent : Commons.Color.urgent) : foreground
   visible: selected
   implicitWidth: visible ? button.implicitWidth : 0
@@ -42,11 +49,13 @@ Panel {
   onVisibleChanged: if (!visible) close()
   onEndpointChanged: {
     state = ({})
+    usb = ({})
     bandsDebounce.stop()
     errorKey = ""
     resultKey = ""
     pendingRead = opened && selected
     if (pendingRead && !settingsProcess.running) Qt.callLater(readSettings)
+    if (usbSelected) Qt.callLater(readLink)
   }
   onOpenedChanged: { if (opened && selected) readSettings(); else bandsDebounce.stop() }
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("control.py").toString().replace(/^file:\/\//, ""))
@@ -64,6 +73,7 @@ Panel {
     return "unavailable"
   }
   function readSettings() { send("status", "", null) }
+  function readLink() { if (usbSelected && !linkProcess.running) linkProcess.running = true }
   function send(op, feature, value) {
     if (!selected || !opened) return
     if (settingsProcess.running) { if (op === "status") pendingRead = true; return }
@@ -94,6 +104,7 @@ Panel {
           if (this.text.length > 16384) throw new Error("Oversize")
           var data = JSON.parse(this.text)
           if (!data.ok) { root.state=({}); root.errorKey=root.errorFor(data.error); return }
+          if (root.usbSelected) root.usb = Model.usbState(data.usb)
           root.state = Model.validState(data.state)
           if (root.state.bands) root.draftBands=root.state.bands.slice()
           if (Object.keys(root.state).length === 0) root.errorKey="unavailable"
@@ -103,6 +114,22 @@ Panel {
     }
     onExited: if (root.pendingRead && root.opened && root.selected) Qt.callLater(root.readSettings)
   }
+  Process {
+    id: linkProcess
+    command: ["timeout", "3s", "python3", root.helper, '{"op":"link"}']
+    stdout: StdioCollector {
+      onStreamFinished: {
+        if (!root.usbSelected) return
+        try {
+          if (this.text.length > 4096) throw new Error("Oversize")
+          var result = JSON.parse(this.text)
+          root.usb = result.ok ? Model.usbState(result.usb) : ({})
+        } catch(e) { root.usb = ({}) }
+      }
+    }
+  }
+  Timer { interval: 5000; running: root.usbSelected; repeat: true; onTriggered: root.readLink() }
+  Component.onCompleted: if (usbSelected) readLink()
   Timer {
     id: bandsDebounce
     interval: 400
@@ -168,8 +195,8 @@ Panel {
             iconComponent:Component { HeadphonesIcon {iconSize:Style.space(38);color:root.foreground} }
             trailingControl:Component { PanelActionButton { iconText:"󰑐";tooltipText:strings.t("refresh");foreground:root.foreground;fontFamily:root.fontFamily;enabled:!root.busy;onClicked:root.readSettings() } }
           }
-          Caption { text:"Bluetooth" }
-          Caption { visible:!root.linkConfirmed; text:strings.t("linkUnknown");width:parent.width;wrapMode:Text.WordWrap }
+          Caption { text:root.usbSelected ? "USB · 2.4 GHz" : "Bluetooth" }
+          Caption { visible:!root.linkConfirmed; text:strings.t(root.usbSelected && root.usb.link === "disconnected" ? "linkDisconnected" : "linkUnknown");width:parent.width;wrapMode:Text.WordWrap }
           PanelSectionHeader {text:strings.t("batteryTitle");foreground:root.foreground;fontFamily:root.fontFamily}
           RowLayout {
             width:parent.width

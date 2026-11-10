@@ -7,7 +7,7 @@
   "mute": "Mute / unmute",
   "reading": "Reading headset settings…",
   "driverRequired": "Native controls are unavailable.",
-  "permissionDenied": "Bluetooth access was denied.",
+  "permissionDenied": "Headset control access was denied.",
   "notConfirmed": "The headset did not confirm the change. Refresh before retrying.",
   "rejected": "The headset rejected the change.",
   "busyError": "Another headset operation is running. Try again shortly.",
@@ -36,5 +36,6 @@
   "phrase4": "Your next level has a soundtrack",
   "phrase5": "Bluetooth, full immersion",
   "phrase6": "Game on, world on pause",
-  "quickGaming": "Turn gaming mode off to use Quick Connect."
+  "quickGaming": "Turn gaming mode off over Bluetooth to use Quick Connect.",
+  "linkDisconnected": "Headset disconnected from the dongle."
 }

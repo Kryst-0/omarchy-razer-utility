@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "krysto.razer-utility",
   "name": "Razer Utility",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Krysto",
   "license": "MIT",
-  "description": "Native Bluetooth controls for Razer Barracuda X 2022, following the default output.",
+  "description": "Native USB dongle and Bluetooth controls for Razer Barracuda X 2022, following the default output.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Razer Utility",
-    "description": "Hardware EQ, gaming, DND, standby and Quick Connect over Bluetooth.",
+    "description": "Hardware EQ, DND, standby and Quick Connect over USB or Bluetooth; Bluetooth gaming mode.",
     "category": "Audio",
     "defaultSection": "right",
     "allowMultiple": false
